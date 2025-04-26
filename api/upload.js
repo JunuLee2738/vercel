@@ -7,7 +7,7 @@ const firebaseConfig = JSON.parse(process.env.FIREBASE_PROJECT_CONFIG.replace(/\
 initializeApp({ credential: cert(firebaseConfig) });
 const db = getFirestore();
 
-router.post('/', async (req, res) => {
+router.post('/upload', async (req, res) => {
   try {
     const { base64, customName, mimeType } = req.body;
     if (!base64 || !mimeType) {
