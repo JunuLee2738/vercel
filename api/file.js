@@ -17,7 +17,7 @@ router.get('/:id', async (req, res) => {
     const data = doc.data();
     const buffer = Buffer.from(data.base64, 'base64');
     if (req.originalUrl.startsWith('/file/')) {
-      res.setHeader('Content-Disposition', `attachment; filename=\"\${data.customName || id}\"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${data.customName || id}"`);
     }
     res.contentType(data.mimeType);
     res.send(buffer);
