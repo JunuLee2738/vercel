@@ -20,17 +20,33 @@
       e.preventDefault();
       const form = e.target;
       const formData = new FormData(form);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data.success) {
-        document.getElementById('result').innerHTML = `
-          <p>업로드 완료!</p>
-          <a href="/raw/${data.name}" target="_blank" class="text-blue-500 underline">Raw 보기</a><br>
-          <a href="/file/${data.name}" target="_blank" class="text-blue-500 underline">다운로드</a>
-        `;
-      } else {
-        document.getElementById('result').innerText = '업로드 실패';
-      }
+      const file = formData.get('file');
+      const customName = formData.get('customName') || '';
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result.split(',')[1];
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            base64: base64Data, 
+            customName: customName,
+            mimeType: file.type
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('result').innerHTML = `
+            <p>업로드 완료!</p>
+            <a href="/raw/${data.id}" target="_blank" class="text-blue-500 underline">Raw 보기</a><br>
+            <a href="/file/${data.id}" target="_blank" class="text-blue-500 underline">다운로드</a>
+          `;
+        } else {
+          document.getElementById('result').innerText = '업로드 실패';
+        }
+      };
+      reader.readAsDataURL(file);
     });
   </script>
 </body>
