@@ -1,23 +1,31 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { initializeApp, applicationDefault, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const router = express.Router();
 
-const upload = multer({ dest: '/tmp' });
+const firebaseConfig = JSON.parse(process.env.FIREBASE_PROJECT_CONFIG.replace(/\\n/g, '\n'));
+initializeApp({ credential: cert(firebaseConfig) });
+const db = getFirestore();
 
-router.post('/', upload.single('file'), async (req, res) => {
-  const file = req.file;
-  const customName = req.body.customName || Date.now().toString();
-  const ext = path.extname(file.originalname);
+router.post('/', async (req, res) => {
+  try {
+    const { base64, customName, mimeType } = req.body;
+    if (!base64 || !mimeType) {
+      return res.status(400).json({ success: false, error: 'Invalid data' });
+    }
 
-  const safeName = customName.replace(/[^a-zA-Z0-9-_]/g, '');
-  const finalName = `${safeName}${ext}`;
+    const docRef = await db.collection('uploads').add({
+      base64: base64,
+      mimeType: mimeType,
+      createdAt: Date.now(),
+      customName: customName
+    });
 
-  const uploadsPath = path.join('/tmp', finalName);
-  fs.renameSync(file.path, uploadsPath);
-
-  res.json({ success: true, name: finalName });
+    res.json({ success: true, id: docRef.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
 });
 
 module.exports = router;
