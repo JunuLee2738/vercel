@@ -1,18 +1,29 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const router = express.Router();
 
-router.get('/:name', (req, res) => {
-  const filename = req.params.name;
-  const filePath = path.join('/tmp', filename);
+const firebaseConfig = JSON.parse(process.env.FIREBASE_PROJECT_CONFIG.replace(/\\n/g, '\n'));
+initializeApp({ credential: cert(firebaseConfig) });
+const db = getFirestore();
 
-  if (!fs.existsSync(filePath)) return res.status(404).send('파일 없음');
-
-  if (req.originalUrl.startsWith('/file/')) {
-    res.download(filePath);
-  } else {
-    res.sendFile(filePath);
+router.get('/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const doc = await db.collection('uploads').doc(id).get();
+    if (!doc.exists) {
+      return res.status(404).send('Not found');
+    }
+    const data = doc.data();
+    const buffer = Buffer.from(data.base64, 'base64');
+    if (req.originalUrl.startsWith('/file/')) {
+      res.setHeader('Content-Disposition', `attachment; filename=\"\${data.customName || id}\"`);
+    }
+    res.contentType(data.mimeType);
+    res.send(buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
   }
 });
 
