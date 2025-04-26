@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/upload",
+      "dest": "api/server.js"
+    },
+    {
+      "src": "/api/links/:name",
+      "dest": "api/server.js"
+    },
+    {
+      "src": "/file/:id",
+      "dest": "api/server.js"
+    },
+    {
+      "src": "^/([^/.]+)$",
+      "dest": "api/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
