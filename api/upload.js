@@ -6,7 +6,9 @@ export default async function handler(req, res) {
   for await (const chunk of req) chunks.push(chunk);
   const fileBuffer = Buffer.concat(chunks);
 
-  const filename = req.headers["x-file-name"] || `file-${Date.now()}`;
+  // const filename = req.headers["x-file-name"] || `file-${Date.now()}`;
+  const encoded = req.headers["x-file-name"];
+  const filename = decodeURIComponent(escape(Buffer.from(encoded, "base64").toString("utf-8")));
 
   try {
     const form = new FormData();
