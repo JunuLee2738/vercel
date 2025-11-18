@@ -5,15 +5,161 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>이미지 업로드</title>
 <style>
-  body { font-family: Arial; margin:20px; background:#f4f4f9; }
-  .container { max-width:700px; margin:0 auto; padding:20px; background:white; border-radius:10px; text-align:center; }
-  #displayContainer { display:flex; justify-content:center; align-items:center; min-height:80vh; flex-direction:column; }
-  .context-menu, .format-dropdown {
-    position:absolute; background:white; border:1px solid #ccc; border-radius:5px;
-    box-shadow:0 2px 5px rgba(0,0,0,.2); z-index:9999;
+  :root {
+    --primary:#4A75FF;
+    --primary-hover:#3454c4;
+    --bg:#eef1f7;
+    --card-bg:rgba(255,255,255,0.65);
   }
-  .context-menu-item, .format-item { padding:8px 12px; cursor:pointer; }
-  .context-menu-item:hover, .format-item:hover { background:#eee; }
+
+  body {
+    font-family: "Pretendard", Arial, sans-serif;
+    background: var(--bg);
+    margin:0; padding:0;
+    display:flex; justify-content:center; align-items:center;
+    min-height:100vh;
+  }
+
+  .container {
+    width:90%; max-width:650px;
+    padding:30px;
+    background:var(--card-bg);
+    backdrop-filter: blur(15px);
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.5);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align:center;
+    animation: fadeIn .4s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(10px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  h1 {
+    margin-bottom:18px;
+    font-size:28px;
+    font-weight:700;
+    color:#222;
+  }
+
+  #fileInput {
+    padding:12px;
+    width:100%;
+    margin-top:15px;
+    border-radius:12px;
+    border:1px solid #ddd;
+    background:white;
+    transition:.2s;
+  }
+  #fileInput:hover {
+    border-color: var(--primary);
+  }
+
+  button {
+    padding:14px 24px;
+    background:var(--primary);
+    color:white;
+    border:none;
+    margin-top:18px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:600;
+    transition:.2s;
+    width:100%;
+  }
+  button:hover {
+    background:var(--primary-hover);
+  }
+
+  #message {
+    margin-top:15px;
+    font-size:15px;
+    font-weight:600;
+    color:#444;
+  }
+
+  #linkContainer {
+    margin-top:25px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  #imageLink {
+    background:white;
+    padding:12px 18px;
+    border-radius:10px;
+    text-decoration:none;
+    display:block;
+    color:var(--primary);
+    font-weight:700;
+    transition:.2s;
+  }
+  #imageLink:hover {
+    background:#dfe7ff;
+  }
+
+  /* 이미지 뷰 */
+  #displayContainer {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:80vh;
+    flex-direction:column;
+  }
+
+  #displayImage {
+    max-width:100%;
+    max-height:75vh;
+    border-radius:15px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.18);
+    cursor:pointer;
+    transition:.2s;
+  }
+  #displayImage:hover {
+    transform:scale(1.01);
+  }
+
+  /* 우클릭 메뉴 */
+  .context-menu {
+    position:absolute;
+    background:white;
+    border-radius:10px;
+    border:1px solid #ccc;
+    box-shadow:0 6px 18px rgba(0,0,0,0.15);
+    overflow:hidden;
+    min-width:180px;
+  }
+
+  .context-menu-item {
+    padding:12px 15px;
+    transition:.18s;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .context-menu-item:hover {
+    background:#f1f4ff;
+    color:var(--primary);
+  }
+
+  .format-dropdown {
+    position:absolute;
+    background:white;
+    border-radius:10px;
+    border:1px solid #ccc;
+    overflow:hidden;
+  }
+  .format-item {
+    padding:10px 14px;
+    cursor:pointer;
+    font-size:15px;
+  }
+  .format-item:hover {
+    background:#e8ecff;
+  }
 </style>
 </head>
 <body>
@@ -24,14 +170,14 @@
   <button id="uploadButton">업로드</button>
   <div id="message"></div>
 
-  <div id="linkContainer" style="display:none; margin-top:20px;">
+  <div id="linkContainer" style="display:none;">
     <a id="imageLink" target="_blank">이미지 바로가기</a>
     <button id="copyButton">공유 링크 복사</button>
   </div>
 </div>
 
 <div class="container" id="displayContainer" style="display:none;">
-  <img id="displayImage" style="max-width:100%; max-height:80vh; border-radius:10px;" />
+  <img id="displayImage"/>
 </div>
 
 <script>
@@ -48,9 +194,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (id && name) {
     document.getElementById("uploadContainer").style.display = "none";
+
     const img = document.getElementById("displayImage");
     img.src = `/api/image?id=${id}&name=${name}`;
     document.getElementById("displayContainer").style.display = "flex";
+
     setupContextMenu(img, id, name);
   }
 });
@@ -60,28 +208,28 @@ document.getElementById("uploadButton").onclick = async () => {
   if (!file) return alert("파일을 선택하세요.");
 
   const message = document.getElementById("message");
-  message.textContent = "업로드 중...";
+  message.textContent = "⏳ 업로드 중...";
 
   const res = await fetch(`/api/upload`, {
-    method: "POST",
-    headers: { "x-file-name": file.name },
-    body: file
+    method:"POST",
+    headers:{ "x-file-name": file.name },
+    body:file
   });
 
   const { id, name } = await res.json();
   const shareUrl = `${location.origin}?id=${id}&name=${name}`;
 
-  document.getElementById("linkContainer").style.display = "block";
+  document.getElementById("linkContainer").style.display = "flex";
   document.getElementById("imageLink").href = shareUrl;
   document.getElementById("copyButton").onclick = () =>
-    navigator.clipboard.writeText(shareUrl).then(() => alert("복사됨"));
+    navigator.clipboard.writeText(shareUrl).then(()=>alert("공유 링크 복사됨"));
 
   message.textContent = "업로드 완료!";
 };
 
 function setupContextMenu(img, id, name) {
-  const url = `${location.origin}?id=${id}&name=${name}`;
-  const rawUrl = `${location.origin}?id=${id}&name=${name}&raw=1`;
+  const rawUrl = `${location.origin}/api/image?id=${id}&name=${name}`;
+  const shareUrl = `${location.origin}?id=${id}&name=${name}`;
 
   const menu = document.createElement("div");
   menu.className = "context-menu";
@@ -93,8 +241,8 @@ function setupContextMenu(img, id, name) {
 
     [
       { text:"이미지 다운로드", action:()=>window.open(rawUrl) },
-      { text:"공유 링크 복사", action:()=>navigator.clipboard.writeText(url) },
-      { text:"이미지 RAW 링크 복사", action:()=>navigator.clipboard.writeText(rawUrl) }
+      { text:"공유 링크 복사", action:()=>navigator.clipboard.writeText(shareUrl) },
+      { text:"RAW 이미지 링크 복사", action:()=>navigator.clipboard.writeText(rawUrl) }
     ].forEach(a=>{
       const item=document.createElement("div");
       item.className="context-menu-item";
