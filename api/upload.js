@@ -12,8 +12,7 @@ export default async function handler(req, res) {
     access: "public"
   });
 
-  // url example: https://blob.vercel-storage.com/.../images/1737104847773-test.png
-  const id = url.split("/").pop(); // 1737104847773-test.png
+  const id = url.split("/").pop(); // e.g. 1737104847773-photo.png
 
   res.status(200).json({ id });
 }
