@@ -208,11 +208,12 @@ document.getElementById("uploadButton").onclick = async () => {
   if (!file) return alert("파일을 선택하세요.");
 
   const message = document.getElementById("message");
-  message.textContent = "⏳ 업로드 중...";
-
+  message.textContent = "업로드 중...";
+  const encodedName = btoa(unescape(encodeURIComponent(file.name)));
+  
   const res = await fetch(`/api/upload`, {
     method:"POST",
-    headers:{ "x-file-name": file.name },
+    headers:{ "x-file-name": encodedName },
     body:file
   });
 
