@@ -1,31 +1,19 @@
-const express = require('express');
-const { initializeApp, applicationDefault, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
-const router = express.Router();
+import { put } from "@vercel/blob";
 
-const firebaseConfig = JSON.parse(process.env.FIREBASE_PROJECT_CONFIG.replace(/\\n/g, '\n'));
-initializeApp({ credential: cert(firebaseConfig) });
-const db = getFirestore();
+export default async function handler(req, res) {
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method not allowed" });
 
-router.post('/upload', async (req, res) => {
-  try {
-    const { base64, customName, mimeType } = req.body;
-    if (!base64 || !mimeType) {
-      return res.status(400).json({ success: false, error: 'Invalid data' });
-    }
+  const data = await req.body;
+  const fileBuffer = Buffer.from(await data.arrayBuffer());
+  const fileName = req.headers["x-file-name"];
 
-    const docRef = await db.collection('uploads').add({
-      base64: base64,
-      mimeType: mimeType,
-      createdAt: Date.now(),
-      customName: customName
-    });
+  const { url } = await put(`images/${Date.now()}-${fileName}`, fileBuffer, {
+    access: "public"
+  });
 
-    res.json({ success: true, id: docRef.id });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
+  // url example: https://blob.vercel-storage.com/.../images/1737104847773-test.png
+  const id = url.split("/").pop(); // 1737104847773-test.png
 
-module.exports = router;
+  res.status(200).json({ id });
+}
