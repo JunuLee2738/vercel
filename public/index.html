@@ -1,53 +1,146 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>파일 업로드</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>이미지 업로드</title>
+<style>
+  body { font-family: Arial; margin:20px; background:#f4f4f9; }
+  .container {
+    max-width:700px; margin:0 auto; padding:20px; background:#fff;
+    border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  }
+  #displayContainer {
+    display:flex; justify-content:center; align-items:center;
+    min-height:80vh; flex-direction:column;
+  }
+  .context-menu, .format-dropdown {
+    position:absolute; background:#fff; border:1px solid #ccc;
+    border-radius:5px; box-shadow:0 2px 5px rgba(0,0,0,0.3);
+    z-index:9999;
+  }
+  .context-menu-item, .format-item {
+    padding:8px 12px; cursor:pointer; white-space:nowrap;
+  }
+  .context-menu-item:hover, .format-item:hover { background:#eee; }
+  button {
+    margin-top:10px; padding:10px 20px;
+    background:#007bff; color:white; border:none; border-radius:6px;
+    cursor:pointer;
+  }
+</style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-  <div class="bg-white p-8 rounded shadow-md w-full max-w-md">
-    <h1 class="text-2xl font-bold mb-4 text-center">파일 업로드</h1>
-    <form id="uploadForm" class="flex flex-col gap-4">
-      <input type="file" name="file" required>
-      <input type="text" name="customName" placeholder="커스텀 이름 (선택)">
-      <button type="submit" class="bg-blue-500 text-white p-2 rounded">업로드</button>
-    </form>
-    <div id="result" class="mt-4"></div>
-  </div>
-  <script>
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      const file = formData.get('file');
-      const customName = formData.get('customName') || '';
+<body>
 
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result.split(',')[1];
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            base64: base64Data, 
-            customName: customName,
-            mimeType: file.type
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('result').innerHTML = `
-            <p>업로드 완료!</p>
-            <a href="/raw/${data.id}" target="_blank" class="text-blue-500 underline">Raw 보기</a><br>
-            <a href="/file/${data.id}" target="_blank" class="text-blue-500 underline">다운로드</a>
-          `;
-        } else {
-          document.getElementById('result').innerText = '업로드 실패';
-        }
-      };
-      reader.readAsDataURL(file);
+<!-- 업로드 UI -->
+<div class="container" id="uploadContainer">
+  <h1>이미지 업로드</h1>
+  <input type="file" id="fileInput" required />
+  <button id="uploadButton">업로드</button>
+  <div id="message"></div>
+  <div id="linkContainer" style="display:none;">
+    <a id="imageLink">이미지 바로가기</a>
+    <button id="copyButton">공유 링크 복사</button>
+  </div>
+</div>
+
+<!-- 공유 링크 UI -->
+<div class="container" id="displayContainer" style="display:none;">
+  <img id="displayImage" style="max-width:100%; max-height:80vh; border-radius:10px;" />
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  const raw = params.get("raw");
+
+  if (id && raw === "1") {
+    window.location.href = `/api/image?id=${id}`;
+    return;
+  }
+
+  if (id) {
+    document.getElementById("uploadContainer").style.display = "none";
+    const img = document.getElementById("displayImage");
+    img.src = `/?id=${id}&raw=1`;  // 중앙 표시용 raw 이미지
+    document.getElementById("displayContainer").style.display = "flex";
+    setupContextMenu(img, id);
+  }
+});
+
+document.getElementById("uploadButton").onclick = async () => {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return alert("파일 선택");
+
+  const message = document.getElementById("message");
+  message.textContent = "업로드 중...";
+
+  const res = await fetch(`/api/upload`, {
+    method: "POST",
+    headers: { "x-file-name": file.name },
+    body: file
+  });
+
+  const result = await res.json();
+  const id = result.id;
+  const shareUrl = `${location.origin}/?id=${id}`;
+
+  document.getElementById("linkContainer").style.display = "block";
+  document.getElementById("imageLink").href = shareUrl;
+
+  document.getElementById("copyButton").onclick = () =>
+    navigator.clipboard.writeText(shareUrl).then(() => alert("복사 완료"));
+
+  message.textContent = "업로드 완료!";
+};
+
+function setupContextMenu(img, id) {
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+  document.body.appendChild(menu);
+
+  img.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    menu.innerHTML = "";
+
+    const actions = [
+      { text:"이미지 다운로드", action:()=>window.open(`/?id=${id}&raw=1`) },
+      { text:"공유 링크 복사", action:()=>navigator.clipboard.writeText(`${location.origin}/?id=${id}`) },
+      { text:"더보기", action:()=>showMore(e.pageX, e.pageY, id) }
+    ];
+
+    actions.forEach(a=>{
+      const item=document.createElement("div");
+      item.className="context-menu-item";
+      item.textContent=a.text;
+      item.onclick=a.action;
+      menu.appendChild(item);
     });
-  </script>
+
+    menu.style.top = e.pageY + "px";
+    menu.style.left = e.pageX + "px";
+    menu.style.display = "block";
+  });
+
+  document.addEventListener("click", ()=> menu.style.display="none");
+}
+
+function showMore(x,y,id){
+  const d=document.createElement("div");
+  d.className="format-dropdown";
+  d.style.top=y+"px"; d.style.left=x+"px";
+
+  const item=document.createElement("div");
+  item.className="format-item";
+  item.textContent="이미지 링크 복사";
+  item.onclick=()=>navigator.clipboard.writeText(`${location.origin}/?id=${id}&raw=1`);
+
+  d.appendChild(item);
+  document.body.appendChild(d);
+
+  document.addEventListener("click",()=>d.remove());
+}
+</script>
 </body>
 </html>
